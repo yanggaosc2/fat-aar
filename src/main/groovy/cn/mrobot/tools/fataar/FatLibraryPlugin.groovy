@@ -1,6 +1,5 @@
 package cn.mrobot.tools.fataar
 
-import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.api.LibraryVariant
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Plugin
@@ -10,6 +9,8 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.DependencyResolutionListener
 import org.gradle.api.artifacts.ResolvableDependencies
 import org.gradle.api.artifacts.ResolvedArtifact
+import org.gradle.api.artifacts.ResolvedConfiguration
+import org.gradle.api.internal.artifacts.DefaultResolvedArtifact
 
 /**
  *
@@ -43,12 +44,12 @@ class FatLibraryPlugin implements Plugin<Project> {
         createConfiguration()
         project.afterEvaluate {
             fatLibraryExt = project.fatLibraryExt
-            if (fatLibraryExt.enable) {
+            if (fatLibraryExt != null && fatLibraryExt.enable) {
                 resolveArtifacts()
-                LibraryExtension android = project.android
-                android.libraryVariants.all { variant ->
-                    processVariant(variant, fatLibraryExt.excludeFiles)
-                }
+//                LibraryExtension android = project.android
+//                android.libraryVariants.all { variant ->
+//                    processVariant(variant, fatLibraryExt.excludeFiles)
+//                }
             }
         }
 
@@ -76,8 +77,8 @@ class FatLibraryPlugin implements Plugin<Project> {
             @Override
             void beforeResolve(ResolvableDependencies resolvableDependencies) {
                 fatLibraryExt = project.fatLibraryExt
-                if (fatLibraryExt.enable) {
-                    println 'change embed to provided'
+                if (fatLibraryExt != null && fatLibraryExt.enable) {
+                    println 'change embed to compileOnly'
                     embedConf.dependencies.each { dependency ->
                         /**
                          * use provided instead of compile.
@@ -90,19 +91,20 @@ class FatLibraryPlugin implements Plugin<Project> {
                          *   3. [Fixed]proguard.txt of embedded dependency is excluded when proguard.
                          *   4. any other...
                          */
-                        project.dependencies.add('provided', dependency)
+                        project.dependencies.add('compileOnly', dependency)
                     }
                 } else {
                     println 'change embed to compile'
                     embedConf.dependencies.each { dependency ->
-                        project.dependencies.add('compile', dependency)
+                        project.dependencies.add('api', dependency)
                     }
                 }
                 project.gradle.removeListener(this)
             }
 
             @Override
-            void afterResolve(ResolvableDependencies resolvableDependencies) {}
+            void afterResolve(ResolvableDependencies resolvableDependencies) {
+            }
         })
     }
 
@@ -112,7 +114,9 @@ class FatLibraryPlugin implements Plugin<Project> {
     private void resolveArtifacts() {
         def set = new HashSet<>()
         //解析需要打包的依赖库
-        embedConf.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+        ResolvedConfiguration resolvedConfiguration = embedConf.resolvedConfiguration
+        println resolvedConfiguration.class
+        resolvedConfiguration.resolvedArtifacts.each { artifact ->
             // jar file wouldn't be here
             if (ARTIFACT_TYPE_AAR.equals(artifact.type) || ARTIFACT_TYPE_JAR.equals(artifact.type)) {
                 println 'fat-aar-->[embed detected][' + artifact.type + ']' + artifact.moduleVersion.id
@@ -132,7 +136,13 @@ class FatLibraryPlugin implements Plugin<Project> {
      */
     private void processVariant(LibraryVariant variant, NamedDomainObjectContainer<ExcludeFile> excludeFileNames) {
         def processor = new VariantProcessor(project, variant)
-        for (artifact in artifacts) {
+        for (DefaultResolvedArtifact artifact in artifacts) {
+            println artifact.name
+            println artifact.class
+            println artifact.file
+            artifact.getBuildDependencies().getDependencies().each {
+                println it.name
+            }
             if (ARTIFACT_TYPE_AAR.equals(artifact.type)) {
                 AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(project, artifact)
                 processor.addAndroidArchiveLibrary(archiveLibrary)

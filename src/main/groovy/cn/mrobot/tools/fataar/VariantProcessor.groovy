@@ -47,11 +47,12 @@ class VariantProcessor {
     }
 
     public void processVariant() {
-        String taskPath = 'prepare' + mVariant.name.capitalize() + 'Dependencies'
+        String taskPath = 'pre' + mVariant.name.capitalize() + 'Build'
         Task prepareTask = mProject.tasks.findByPath(taskPath)
         if (prepareTask == null) {
             throw new RuntimeException("Can not find task ${taskPath}!")
         }
+        prepareTask.dependsOn()
 
         processClassesAndJars()
 
@@ -86,17 +87,23 @@ class VariantProcessor {
         if (invokeManifestTaskClazz == null) {
             throw new RuntimeException("Can not find class ${className}!")
         }
-        Task processManifestTask = mVariant.getOutputs().get(0).getProcessManifest()
-        def manifestOutput = mProject.file(mProject.buildDir.path + '/intermediates/fat-aar/' + mVariant.dirName + '/AndroidManifest.xml')
-        File manifestOutputBackup = processManifestTask.getManifestOutputFile()
-        processManifestTask.setManifestOutputFile(manifestOutput)
+        Task processManifestTask = mVariant.getOutputs().first().getProcessManifest()
+        def manifestOutput = mProject.file(mProject.buildDir.path + '/intermediates/fat-aar/' + mVariant.dirName)
+        File manifestOutputBackup = mProject.file(processManifestTask.getManifestOutputDirectory().absolutePath + '/AndroidManifest.xml')
+        processManifestTask.setManifestOutputDirectory(manifestOutput)
+
+        File mainManifestFile = new File(manifestOutput.absolutePath + '/AndroidManifest.xml')
+        mainManifestFile.deleteOnExit()
+        manifestOutput.mkdirs()
+        mainManifestFile.createNewFile()
 
         Task manifestsMergeTask = mProject.tasks.create('merge' + mVariant.name.capitalize() + 'Manifest', invokeManifestTaskClazz)
         manifestsMergeTask.setVariantName(mVariant.name)
-        manifestsMergeTask.setMainManifestFile(manifestOutput)
+        manifestsMergeTask.setMainManifestFile(mainManifestFile)
         List<File> list = new ArrayList<>()
         for (archiveLibrary in mAndroidArchiveLibraries) {
             list.add(archiveLibrary.getManifest())
+            println archiveLibrary.getManifest().absolutePath
         }
         manifestsMergeTask.setSecondaryManifestFiles(list)
         manifestsMergeTask.setOutputFile(manifestOutputBackup)
@@ -168,7 +175,7 @@ class VariantProcessor {
      * generate R.java
      */
     private void processRSources() {
-        Task processResourcesTask = mVariant.getOutputs().get(0).getProcessResources()
+        Task processResourcesTask = mVariant.getOutputs().first().getProcessResources()
         processResourcesTask.doLast {
             for (archiveLibrary in mAndroidArchiveLibraries) {
                 RSourceGenerator.generate(processResourcesTask.getSourceOutputDir(), archiveLibrary)
@@ -221,7 +228,7 @@ class VariantProcessor {
      * merge proguard.txt
      */
     private void processProguardTxt(Task prepareTask) {
-        String taskPath = 'merge' + mVariant.name.capitalize() + 'ProguardFiles'
+        String taskPath = 'merge' + mVariant.name.capitalize() + 'ConsumerProguardFiles'
         Task mergeFileTask = mProject.tasks.findByPath(taskPath)
         if (mergeFileTask == null) {
             throw new RuntimeException("Can not find task ${taskPath}!")
