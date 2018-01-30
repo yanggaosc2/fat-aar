@@ -31,5 +31,9 @@ fatLibraryExt {
 
 libs 为 aar包中的文件类型
 fileName 为 文件相对与文件类型目录的路径
+
+thanks
+
+https://github.com/Vigi0303/fat-aar-plugin
         
         
