@@ -1,0 +1,72 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'org.jfrog.buildinfo:build-info-extractor-gradle:3.1.1'
+    }
+}
+
+apply plugin: 'groovy'
+apply plugin: 'maven'
+repositories {
+    jcenter()
+    maven { url 'http://172.16.0.15:8081/nexus/content/repositories/releases/' }
+}
+
+dependencies {
+    compile gradleApi()
+    compile localGroovy()
+    compile 'org.git:jclasslib:4.3'
+    compile 'com.android.tools.build:gradle:2.1.0'
+    compile 'com.squareup:javapoet:1.8.0'
+    compile 'org.jooq:joor:0.9.6'
+}
+
+uploadArchives {
+    configuration = configurations.archives
+    repositories {
+        mavenDeployer {
+            snapshotRepository(url: MAVEN_SNAPSHOT_URL) {
+                authentication(userName: NEXUS_USERNAME, password: NEXUS_PASSWORD)
+            }
+            repository(url: MAVEN_URL) {
+                authentication(userName: NEXUS_USERNAME, password: NEXUS_PASSWORD)
+            }
+            pom.project {
+                version VERSION_NAME
+                artifactId ARTIFACT_ID
+                groupId GROUP_ID
+                packaging TYPE
+                description DESCRIPTION
+            }
+        }
+    }
+}
+
+/**
+ * 本地测试时使用
+ */
+install {
+    repositories.mavenInstaller {
+        pom.project {
+            version '9.9.999'
+            artifactId ARTIFACT_ID
+            groupId GROUP_ID
+            packaging TYPE
+            description DESCRIPTION
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    group BasePlugin.BUILD_GROUP
+    description = 'Assembles a jar archive containing the main sources of this project.'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
+}
