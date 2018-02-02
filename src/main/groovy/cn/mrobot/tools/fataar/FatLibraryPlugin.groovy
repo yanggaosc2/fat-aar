@@ -1,5 +1,6 @@
 package cn.mrobot.tools.fataar
 
+import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.api.LibraryVariant
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Plugin
@@ -9,8 +10,6 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.DependencyResolutionListener
 import org.gradle.api.artifacts.ResolvableDependencies
 import org.gradle.api.artifacts.ResolvedArtifact
-import org.gradle.api.artifacts.ResolvedConfiguration
-import org.gradle.api.internal.artifacts.DefaultResolvedArtifact
 
 /**
  *
@@ -24,11 +23,11 @@ class FatLibraryPlugin implements Plugin<Project> {
     /**
      * 依赖库类型: aar
      */
-    private static final String ARTIFACT_TYPE_AAR = 'aar';
+    public static final String ARTIFACT_TYPE_AAR = 'aar'
     /**
      * 依赖库类型: jar
      */
-    private static final String ARTIFACT_TYPE_JAR = 'jar';
+    public static final String ARTIFACT_TYPE_JAR = 'jar'
 
     private Project project
     private Configuration embedConf
@@ -46,10 +45,10 @@ class FatLibraryPlugin implements Plugin<Project> {
             fatLibraryExt = project.fatLibraryExt
             if (fatLibraryExt != null && fatLibraryExt.enable) {
                 resolveArtifacts()
-//                LibraryExtension android = project.android
-//                android.libraryVariants.all { variant ->
-//                    processVariant(variant, fatLibraryExt.excludeFiles)
-//                }
+                LibraryExtension android = project.android
+                android.libraryVariants.all { variant ->
+                    processVariant(variant, fatLibraryExt.excludeFiles)
+                }
             }
         }
 
@@ -80,21 +79,10 @@ class FatLibraryPlugin implements Plugin<Project> {
                 if (fatLibraryExt != null && fatLibraryExt.enable) {
                     println 'change embed to compileOnly'
                     embedConf.dependencies.each { dependency ->
-                        /**
-                         * use provided instead of compile.
-                         * advantage:
-                         *   1. prune dependency node in generated pom file when upload aar library archives.
-                         *   2. make invisible to the android application module, thus to avoid some duplicated processes.
-                         * side effect:
-                         *   1. [Fixed]incorrect R.txt in bundle. I fixed it by another way.
-                         *   2. [Fixed]loss R.java that is supposed to be generated. I make it manually.
-                         *   3. [Fixed]proguard.txt of embedded dependency is excluded when proguard.
-                         *   4. any other...
-                         */
                         project.dependencies.add('compileOnly', dependency)
                     }
                 } else {
-                    println 'change embed to compile'
+                    println 'change embed to api'
                     embedConf.dependencies.each { dependency ->
                         project.dependencies.add('api', dependency)
                     }
@@ -114,9 +102,7 @@ class FatLibraryPlugin implements Plugin<Project> {
     private void resolveArtifacts() {
         def set = new HashSet<>()
         //解析需要打包的依赖库
-        ResolvedConfiguration resolvedConfiguration = embedConf.resolvedConfiguration
-        println resolvedConfiguration.class
-        resolvedConfiguration.resolvedArtifacts.each { artifact ->
+        embedConf.resolvedConfiguration.resolvedArtifacts.each { artifact ->
             // jar file wouldn't be here
             if (ARTIFACT_TYPE_AAR.equals(artifact.type) || ARTIFACT_TYPE_JAR.equals(artifact.type)) {
                 println 'fat-aar-->[embed detected][' + artifact.type + ']' + artifact.moduleVersion.id
@@ -136,21 +122,7 @@ class FatLibraryPlugin implements Plugin<Project> {
      */
     private void processVariant(LibraryVariant variant, NamedDomainObjectContainer<ExcludeFile> excludeFileNames) {
         def processor = new VariantProcessor(project, variant)
-        for (DefaultResolvedArtifact artifact in artifacts) {
-            println artifact.name
-            println artifact.class
-            println artifact.file
-            artifact.getBuildDependencies().getDependencies().each {
-                println it.name
-            }
-            if (ARTIFACT_TYPE_AAR.equals(artifact.type)) {
-                AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(project, artifact)
-                processor.addAndroidArchiveLibrary(archiveLibrary)
-            }
-            if (ARTIFACT_TYPE_JAR.equals(artifact.type)) {
-                processor.addJarFile(artifact.file)
-            }
-        }
+        processor.addArtifacts(artifacts)
         processor.addExcludeFiles(excludeFileNames.toList())
         processor.processVariant()
     }

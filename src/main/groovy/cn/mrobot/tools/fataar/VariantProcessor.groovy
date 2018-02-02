@@ -1,8 +1,12 @@
 package cn.mrobot.tools.fataar
 
 import com.android.build.gradle.api.LibraryVariant
+import com.android.build.gradle.tasks.InvokeManifestMerger
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.artifacts.ResolvedArtifact
+import org.gradle.api.internal.artifacts.DefaultResolvedArtifact
+import org.gradle.api.tasks.Copy
 import org.gradle.jvm.tasks.Jar
 
 /**
@@ -13,7 +17,7 @@ import org.gradle.jvm.tasks.Jar
  *           4. RSources
  *           5. assets
  *           6. jniLibs
- *           7. proguardFile //TODO 2017-06-22 混淆文件合并待完成
+ *           7. proguardFile
  * Created by Vigi on 2017/2/24.
  * Modified by Devil on 2017/06/22
  */
@@ -23,36 +27,47 @@ class VariantProcessor {
 
     private final LibraryVariant mVariant
 
+    private Set<ResolvedArtifact> mResolvedArtifacts = new ArrayList<>()
+
     private Collection<AndroidArchiveLibrary> mAndroidArchiveLibraries = new ArrayList<>()
 
     private Collection<File> mJarFiles = new ArrayList<>()
 
     private Collection<ExcludeFile> mExcludeFiles = new ArrayList<>()
 
-    public VariantProcessor(Project project, LibraryVariant variant) {
+    VariantProcessor(Project project, LibraryVariant variant) {
         mProject = project
         mVariant = variant
     }
 
-    public void addAndroidArchiveLibrary(AndroidArchiveLibrary library) {
+    void addArtifacts(Set<ResolvedArtifact> resolvedArtifacts) {
+        mResolvedArtifacts.addAll(resolvedArtifacts)
+    }
+
+    void addAndroidArchiveLibrary(AndroidArchiveLibrary library) {
         mAndroidArchiveLibraries.add(library)
     }
 
-    public void addJarFile(File jar) {
+    void addJarFile(File jar) {
         mJarFiles.add(jar)
     }
 
-    public void addExcludeFiles(List<ExcludeFile> excludeFiles) {
+    void addExcludeFiles(List<ExcludeFile> excludeFiles) {
         mExcludeFiles.addAll(excludeFiles)
     }
 
-    public void processVariant() {
+    void processVariant() {
         String taskPath = 'pre' + mVariant.name.capitalize() + 'Build'
         Task prepareTask = mProject.tasks.findByPath(taskPath)
         if (prepareTask == null) {
             throw new RuntimeException("Can not find task ${taskPath}!")
         }
-        prepareTask.dependsOn()
+        taskPath = 'bundle' + mVariant.name.capitalize()
+        Task bundleTask = mProject.tasks.findByPath(taskPath)
+        if (bundleTask == null) {
+            throw new RuntimeException("Can not find task ${taskPath}!")
+        }
+        processArtifacts(bundleTask)
 
         processClassesAndJars()
 
@@ -65,8 +80,41 @@ class VariantProcessor {
         processAssets()
         processJniLibs()
         processProguardTxt(prepareTask)
-        mergeRClass()
+        mergeRClass(bundleTask)
         processExcludeFiles()
+    }
+
+    /**
+     * exploded artifact files
+     */
+    private void processArtifacts(Task bundleTask) {
+        for (DefaultResolvedArtifact artifact in mResolvedArtifacts) {
+            if (FatLibraryPlugin.ARTIFACT_TYPE_JAR.equals(artifact.type)) {
+                addJarFile(artifact.file)
+            }
+            if (FatLibraryPlugin.ARTIFACT_TYPE_AAR.equals(artifact.type)) {
+                AndroidArchiveLibrary archiveLibrary = new AndroidArchiveLibrary(mProject, artifact)
+                addAndroidArchiveLibrary(archiveLibrary)
+                Set<Task> buildDependencies = artifact.getBuildDependencies().getDependencies()
+                archiveLibrary.getExploadedRootDir().deleteDir()
+                def zipFolder = archiveLibrary.getRootFolder()
+                zipFolder.mkdirs()
+                if (buildDependencies.size() == 0) {
+                    mProject.copy {
+                        from mProject.zipTree(artifact.file.absolutePath)
+                        into zipFolder
+                    }
+                } else {
+                    Task explodTask = mProject.tasks.create(name: 'explod' + artifact.name.capitalize() + mVariant.buildType.name, type: Copy) {
+                        from mProject.zipTree(artifact.file.absolutePath)
+                        into zipFolder
+                    }
+                    explodTask.dependsOn(buildDependencies.first())
+                    explodTask.shouldRunAfter(buildDependencies.first())
+                    bundleTask.dependsOn(explodTask)
+                }
+            }
+        }
     }
 
     /**
@@ -91,23 +139,32 @@ class VariantProcessor {
         def manifestOutput = mProject.file(mProject.buildDir.path + '/intermediates/fat-aar/' + mVariant.dirName)
         File manifestOutputBackup = mProject.file(processManifestTask.getManifestOutputDirectory().absolutePath + '/AndroidManifest.xml')
         processManifestTask.setManifestOutputDirectory(manifestOutput)
-
         File mainManifestFile = new File(manifestOutput.absolutePath + '/AndroidManifest.xml')
         mainManifestFile.deleteOnExit()
         manifestOutput.mkdirs()
         mainManifestFile.createNewFile()
-
-        Task manifestsMergeTask = mProject.tasks.create('merge' + mVariant.name.capitalize() + 'Manifest', invokeManifestTaskClazz)
+        processManifestTask.doLast {
+            mainManifestFile.write(manifestOutputBackup.text)
+        }
+        InvokeManifestMerger manifestsMergeTask = mProject.tasks.create('merge' + mVariant.name.capitalize() + 'Manifest', invokeManifestTaskClazz)
         manifestsMergeTask.setVariantName(mVariant.name)
         manifestsMergeTask.setMainManifestFile(mainManifestFile)
         List<File> list = new ArrayList<>()
         for (archiveLibrary in mAndroidArchiveLibraries) {
             list.add(archiveLibrary.getManifest())
-            println archiveLibrary.getManifest().absolutePath
         }
         manifestsMergeTask.setSecondaryManifestFiles(list)
         manifestsMergeTask.setOutputFile(manifestOutputBackup)
         manifestsMergeTask.dependsOn processManifestTask
+        manifestsMergeTask.doFirst {
+            List<File> existFiles = new ArrayList<>()
+            manifestsMergeTask.getSecondaryManifestFiles().each {
+                if (it.exists()) {
+                    existFiles.add(it)
+                }
+            }
+            manifestsMergeTask.setSecondaryManifestFiles(existFiles)
+        }
         processManifestTask.finalizedBy manifestsMergeTask
     }
     /**
@@ -259,13 +316,8 @@ class VariantProcessor {
     /**
      * merge android library R.class
      */
-    private void mergeRClass() {
-        String taskPath = 'bundle' + mVariant.name.capitalize()
-        Task bundleTask = mProject.tasks.findByPath(taskPath)
-        if (bundleTask == null) {
-            throw new RuntimeException("Can not find task ${taskPath}!")
-        }
-        taskPath = 'transformClassesAndResourcesWithSyncLibJarsFor' + mVariant.name.capitalize()
+    private void mergeRClass(Task bundleTask) {
+        String taskPath = 'transformClassesAndResourcesWithSyncLibJarsFor' + mVariant.name.capitalize()
         Task syncLibTask = mProject.tasks.findByPath(taskPath)
         if (syncLibTask == null) {
             throw new RuntimeException("Can not find task ${taskPath}!")
@@ -273,10 +325,8 @@ class VariantProcessor {
 
         // 原始jar包文件
         def classesJar = mProject.file(AndroidPluginHelper.resolveBundleDir(mProject, mVariant).path + '/classes.jar')
-        println mVariant.getApplicationId()
         String applicationId = mVariant.getApplicationId();
         String excludeRPath = applicationId.replace('.', '/');
-        println excludeRPath
         Task jarTask
         //开启混淆时对混淆过后的文件进行重新打包
         if (mVariant.getBuildType().isMinifyEnabled()) {
@@ -346,7 +396,8 @@ class VariantProcessor {
         if (syncLibTask == null) {
             throw new RuntimeException("Can not find task ${taskPath}!")
         }
-        def excludeFileTask = mProject.tasks.create(name: 'transformExcludeFilesTask' + mVariant.name) << {
+        def excludeFileTask = mProject.tasks.create(name: 'transformExcludeFilesTask' + mVariant.name)
+        excludeFileTask.doLast {
             def bundlePath = AndroidPluginHelper.resolveBundleDir(mProject, mVariant).path
             mExcludeFiles.each { excludeFile ->
                 excludeFile.fileNames.each { fileName ->

@@ -5,26 +5,26 @@ import org.gradle.api.NamedDomainObjectContainer
 /**
  * fat-aar插件库配置项
  */
-public class FatLibraryExt {
+class FatLibraryExt {
     /**
      * 是否开启fat-aar处理
      */
-    boolean enable;
+    boolean enable
     /**
      * 过滤文件集合
      */
-    NamedDomainObjectContainer<ExcludeFile> excludeFiles;
+    NamedDomainObjectContainer<ExcludeFile> excludeFiles
 
     FatLibraryExt(NamedDomainObjectContainer<ExcludeFile> excludeFiles) {
-        this.excludeFiles = excludeFiles;
+        this.excludeFiles = excludeFiles
     }
 
     def excludeFiles(Closure closure) {
-        excludeFiles.configure(closure);
+        excludeFiles.configure(closure)
     }
 
     def enable(boolean enable) {
-        this.enable = enable;
+        this.enable = enable
     }
 
     @Override
@@ -32,6 +32,6 @@ public class FatLibraryExt {
         return "FatLibraryExt{" +
                 "enable=" + enable +
                 ", excludeFiles=" + excludeFiles +
-                '}';
+                '}'
     }
 }

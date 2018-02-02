@@ -15,8 +15,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
  * Created by Vigi on 2017/2/16.
- *
- * @see com.android.builder.dependency.LibraryDependency
  */
 public class AndroidArchiveLibrary {
 
@@ -44,14 +42,19 @@ public class AndroidArchiveLibrary {
         return mArtifact.getModuleVersion().getId().getVersion();
     }
 
-    public File getRootFolder() {
-        File explodedRootDir = mProject.file(mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
+    public File getExploadedRootDir() {
+        File explodedRootDir = mProject.file(
+            mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
         ModuleVersionIdentifier id = mArtifact.getModuleVersion().getId();
-        return mProject.file(explodedRootDir + "/" + id.getGroup() + "/" + id.getName() + "/" + id.getVersion());
+        return mProject.file(explodedRootDir + "/" + id.getGroup() + "/" + id.getName());
     }
 
-    private File getJarsRootFolder() {
-        return new File(getRootFolder(), "jars");
+    public File getRootFolder() {
+        File explodedRootDir = mProject.file(
+            mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
+        ModuleVersionIdentifier id = mArtifact.getModuleVersion().getId();
+        return mProject.file(
+            explodedRootDir + "/" + id.getGroup() + "/" + id.getName() + "/" + id.getVersion());
     }
 
     public File getAidlFolder() {
@@ -63,12 +66,12 @@ public class AndroidArchiveLibrary {
     }
 
     public File getClassesJarFile() {
-        return new File(getJarsRootFolder(), "classes.jar");
+        return new File(getRootFolder(), "classes.jar");
     }
 
     public Collection<File> getLocalJars() {
         List<File> localJars = new ArrayList<>();
-        File[] jarList = new File(getJarsRootFolder(), "libs").listFiles();
+        File[] jarList = new File(getRootFolder(), "libs").listFiles();
         if (jarList != null) {
             for (File jars : jarList) {
                 if (jars.isFile() && jars.getName().endsWith(".jar")) {
@@ -93,7 +96,7 @@ public class AndroidArchiveLibrary {
     }
 
     public File getLintJar() {
-        return new File(getJarsRootFolder(), "lint.jar");
+        return new File(getRootFolder(), "lint.jar");
     }
 
     public List<File> getProguardRules() {
