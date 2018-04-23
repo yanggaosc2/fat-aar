@@ -1,7 +1,6 @@
 package cn.mrobot.tools.fataar;
 
 import com.google.common.base.Strings;
-
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.util.VersionNumber;
@@ -28,7 +27,7 @@ public class AndroidPluginHelper {
      */
     public static File resolveBundleDir(Project project, Object variant) {
         if (VersionNumber.parse(getAndroidPluginVersion()).compareTo(VersionNumber.parse("2.3.0")) <
-            0) {
+                0) {
             String dirName = Reflect.on(variant).call("getDirName").get();
             if (Strings.isNullOrEmpty(dirName)) {
                 return null;
@@ -46,7 +45,6 @@ public class AndroidPluginHelper {
      * return transform jar file
      */
     public static File resolveTransform(Project project, Object variant) {
-        return project.file(
-            project.getBuildDir() + "/intermediates/transforms/proguard/release/jars/3/3/main.jar");
+        return project.file(project.getBuildDir() + "/intermediates/transforms/proguard/release/jars/3/3/main.jar");
     }
 }

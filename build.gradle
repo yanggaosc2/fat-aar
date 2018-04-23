@@ -11,17 +11,25 @@ buildscript {
 
 apply plugin: 'groovy'
 apply plugin: 'maven'
+
+archivesBaseName = DESCRIPTION
+group = GROUP_ID
+version = VERSION_NAME
+
+def localMavenRepo = 'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath
+
 repositories {
     maven { url 'https://dl.google.com/dl/android/maven2/' }
+    mavenLocal()
     jcenter()
-    maven { url 'http://172.16.0.15:8081/nexus/content/repositories/releases/' }
 }
 
 dependencies {
-    compile gradleApi()
-    compile localGroovy()
-    compile 'org.git:jclasslib:4.3'
-    compile 'com.android.tools.build:gradle:3.0.1'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation gradleApi()
+    implementation localGroovy()
+    compile files('libs/jclasslib-library.jar')
+    implementation 'com.android.tools.build:gradle:3.0.1'
     compile 'com.squareup:javapoet:1.8.0'
     compile 'org.jooq:joor:0.9.6'
 }
@@ -30,9 +38,7 @@ uploadArchives {
     configuration = configurations.archives
     repositories {
         mavenDeployer {
-            snapshotRepository(url: MAVEN_SNAPSHOT_URL) {
-                authentication(userName: NEXUS_USERNAME, password: NEXUS_PASSWORD)
-            }
+//            repository(url: localMavenRepo)
             repository(url: MAVEN_URL) {
                 authentication(userName: NEXUS_USERNAME, password: NEXUS_PASSWORD)
             }
@@ -47,21 +53,6 @@ uploadArchives {
     }
 }
 
-/**
- * 本地测试时使用
- */
-install {
-    repositories.mavenInstaller {
-        pom.project {
-            version '9.9.999'
-            artifactId ARTIFACT_ID
-            groupId GROUP_ID
-            packaging TYPE
-            description DESCRIPTION
-        }
-    }
-}
-
 task sourcesJar(type: Jar) {
     classifier = 'sources'
     group BasePlugin.BUILD_GROUP
@@ -71,4 +62,13 @@ task sourcesJar(type: Jar) {
 
 artifacts {
     archives sourcesJar
+}
+
+jar {
+    manifest {
+        attributes(
+                "Manifest-Version": VERSION_NAME,
+                "Main-Class": GROUP_ID)
+    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }

@@ -115,7 +115,7 @@ class ExplodedHelper {
         rPathList.each { rPath ->
             rFilePath = folderOut.absolutePath + '\\' + rPath.replace('.', '\\')
             File baseFolder = new File(rFilePath)
-            if(baseFolder.exists()) {
+            if (baseFolder.exists()) {
                 baseFolder.traverse(
                         type: FileType.FILES,
                         nameFilter: ~/((^R)|(^R\$.*))\.class/
@@ -141,7 +141,7 @@ class ExplodedHelper {
             rBytes = rBytes.subSequence(1, rBytes.length() - 1)
             rFilePath = folderOut.absolutePath + '\\' + rPath.replace('.', '\\')
             File baseFolder = new File(rFilePath)
-            if(baseFolder.exists()){
+            if (baseFolder.exists()) {
                 baseFolder.traverse(
                         type: FileType.FILES
 //                    nameFilter: ~/((^R)|(^R\$.*))\.class/
@@ -209,7 +209,7 @@ class ExplodedHelper {
      * @return packageName 项目包名
      */
     public static String getProjectPackage(Project project) {
-        def manifestFile = project.projectDir.absolutePath + '\\src\\main\\AndroidManifest.xml'
+        def manifestFile = project.projectDir.absolutePath + "/src/main/AndroidManifest.xml"
         def xparser = new XmlSlurper()
         def androidManifest = xparser.parse(manifestFile)
         return androidManifest.@'manifest:package';

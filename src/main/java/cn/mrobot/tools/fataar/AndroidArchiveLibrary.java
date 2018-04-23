@@ -6,12 +6,11 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
  * Created by Vigi on 2017/2/16.
@@ -44,17 +43,17 @@ public class AndroidArchiveLibrary {
 
     public File getExploadedRootDir() {
         File explodedRootDir = mProject.file(
-            mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
+                mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
         ModuleVersionIdentifier id = mArtifact.getModuleVersion().getId();
         return mProject.file(explodedRootDir + "/" + id.getGroup() + "/" + id.getName());
     }
 
     public File getRootFolder() {
         File explodedRootDir = mProject.file(
-            mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
+                mProject.getBuildDir() + "/intermediates" + "/exploded-aar/");
         ModuleVersionIdentifier id = mArtifact.getModuleVersion().getId();
         return mProject.file(
-            explodedRootDir + "/" + id.getGroup() + "/" + id.getName() + "/" + id.getVersion());
+                explodedRootDir + "/" + id.getGroup() + "/" + id.getName() + "/" + id.getVersion());
     }
 
     public File getAidlFolder() {
