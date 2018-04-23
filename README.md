@@ -1,39 +1,62 @@
 # fat-aar
-package module dependencies code all to module aar
+#### How to use?
 
-1. 在project的build.gradle 中添加classpath
+1. Configure your project build script.
 
-classpath 'cn.mrobot.tools:fat-aar-plugin:+'
+   > build.gradle
 
-2. 在module的build.gradle中应用插件
+   ```groovy
+   buildscript {
+     repositories {
+       maven {
+         url "https://plugins.gradle.org/m2/"
+       }
+     }
+     dependencies {
+       classpath 'com.android.tools.build:gradle:3.0.1'
+       classpath "gradle.plugin.me.lucas:fat-aar-plugin:1.0.9"
+     }
+   }
+   ```
 
-apply plugin: 'cn.mrobot.tools.fat-aar'
+2. Apply the plugin and add 'fatLibraryExt ' on the top of your library module **build.gradle**:
 
-3. 在module的build.gradle 中添加 插件开关项
+   'enable = true' is mean fat-aar turn on.
 
-fatLibraryExt {
-    enable true
-}
+   'enable = false' is mean fat-aar turn off.
 
-4. 如果需要在打包时去除部分文件，格式如下
+   > library/build.gradle
 
-fatLibraryExt {
-    enable true
-    excludeFiles {
-      libs {
-        fileNames('test.jar')
-        }
-       jni {
-         fileNames('test/test.so')
-        }
-    }
-}
+   ```groovy
+   apply plugin: 'me.lucas.fat-aar'
 
-libs 为 aar包中的文件类型
-fileName 为 文件相对与文件类型目录的路径
+   dependencies {
+     embed project(path: ':subLibrary', configuration: 'default')
+     implementation project(':subLibrary')
+   }
 
-thanks
+   fatLibraryExt {
+       enable true
+   }
 
-https://github.com/Vigi0303/fat-aar-plugin
-        
-        
+   ```
+
+3. If you need to remove some files while packing, please add 'excludeFiles '.
+
+   ```groovy
+   fatLibraryExt {
+       enable true
+       excludeFiles {
+         libs {
+           fileNames('gson.jar')
+         }
+         jni {
+            fileNames('test/test.so')
+         }
+       }
+   }
+
+   ```
+
+​        
+​        

@@ -37,8 +37,8 @@ dependencies {
 }
 
 pluginBundle {
-    website = 'http://www.gradle.org/'
-    vcsUrl = 'https://github.com/NicoToast'
+    website = 'https://github.com/NicoToast/fat-aar'
+    vcsUrl = 'https://github.com/NicoToast/fat-aar'
 
     plugins {
         FatLibraryPlugin {
