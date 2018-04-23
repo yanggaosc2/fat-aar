@@ -1,4 +1,4 @@
-package cn.mrobot.tools.fataar
+package me.lucas.fataar
 
 import com.android.build.gradle.api.LibraryVariant
 import com.android.build.gradle.tasks.InvokeManifestMerger

@@ -2,13 +2,18 @@ buildscript {
     repositories {
         maven { url 'https://dl.google.com/dl/android/maven2/' }
         jcenter()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
     }
     dependencies {
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'org.jfrog.buildinfo:build-info-extractor-gradle:4.5.4'
+        classpath "com.gradle.publish:plugin-publish-plugin:0.9.10"
     }
 }
 
+apply plugin: "com.gradle.plugin-publish"
 apply plugin: 'groovy'
 apply plugin: 'maven'
 
@@ -16,11 +21,8 @@ archivesBaseName = DESCRIPTION
 group = GROUP_ID
 version = VERSION_NAME
 
-def localMavenRepo = 'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath
-
 repositories {
     maven { url 'https://dl.google.com/dl/android/maven2/' }
-    mavenLocal()
     jcenter()
 }
 
@@ -34,21 +36,17 @@ dependencies {
     compile 'org.jooq:joor:0.9.6'
 }
 
-uploadArchives {
-    configuration = configurations.archives
-    repositories {
-        mavenDeployer {
-//            repository(url: localMavenRepo)
-            repository(url: MAVEN_URL) {
-                authentication(userName: NEXUS_USERNAME, password: NEXUS_PASSWORD)
-            }
-            pom.project {
-                version VERSION_NAME
-                artifactId ARTIFACT_ID
-                groupId GROUP_ID
-                packaging TYPE
-                description DESCRIPTION
-            }
+pluginBundle {
+    website = 'http://www.gradle.org/'
+    vcsUrl = 'https://github.com/NicoToast'
+
+    plugins {
+        FatLibraryPlugin {
+            id = 'me.lucas.fat-aar'
+            displayName = 'Fataar plugin'
+            description = "The fat-aar plugin that can be used under android plugin 3.0.1 and gradle wrapper 4.4."
+            tags = ['fat-aar', 'android']
+            version = VERSION_NAME
         }
     }
 }

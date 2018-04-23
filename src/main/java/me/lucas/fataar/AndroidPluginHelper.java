@@ -1,4 +1,4 @@
-package cn.mrobot.tools.fataar;
+package me.lucas.fataar;
 
 import com.google.common.base.Strings;
 import org.gradle.api.Project;

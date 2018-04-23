@@ -1,4 +1,4 @@
-package cn.mrobot.tools.fataar
+package me.lucas.fataar
 
 import org.gradle.api.NamedDomainObjectContainer
 
